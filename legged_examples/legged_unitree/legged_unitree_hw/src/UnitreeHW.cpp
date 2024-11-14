@@ -103,8 +103,11 @@ void UnitreeHW::write(const ros::Time& /*time*/, const ros::Duration& /*period*/
     lowCmd_.motorCmd[i].Kd = static_cast<float>(jointData_[i].kd_);
     lowCmd_.motorCmd[i].tau = static_cast<float>(jointData_[i].ff_);
   }
-  safety_->PositionLimit(lowCmd_);
-  safety_->PowerProtect(lowCmd_, lowState_, powerLimit_);
+
+
+  // safety_->PositionLimit(lowCmd_);
+  // safety_->PowerProtect(lowCmd_, lowState_, powerLimit_);
+
   udp_->SetSend(lowCmd_);
   udp_->Send();
 }
@@ -207,3 +210,4 @@ void UnitreeHW::updateContact(const ros::Time& time) {
 }
 
 }  // namespace legged
+
