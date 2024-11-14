@@ -7,7 +7,7 @@
 // #include "legged_unitree_hw/UnitreeHW.h"
 
 // 新的 SDK 头文件
-#include "free_dog_sdk_h/free_dog_sdk_h.hpp"  // 修改为新的 SDK 头文件
+#include "fdsc_utils/free_dog_sdk_h.hpp"  // 修改为新的 SDK 头文件
 
 #include <sensor_msgs/Joy.h>
 #include <std_msgs/Int16MultiArray.h>
