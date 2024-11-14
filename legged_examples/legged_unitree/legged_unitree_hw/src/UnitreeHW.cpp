@@ -3,13 +3,11 @@
 // Created by qiayuan on 1/24/22.
 //
 
-#include "legged_unitree_hw/UnitreeHW.h"
+// 原有 SDK 头文件
+// #include "legged_unitree_hw/UnitreeHW.h"
 
-#ifdef UNITREE_SDK_3_3_1
-#include "unitree_legged_sdk_3_3_1/unitree_joystick.h"
-#elif UNITREE_SDK_3_8_0
-#include "unitree_legged_sdk_3_8_0/joystick.h"
-#endif
+// 新的 SDK 头文件
+#include "free_dog_sdk_h/free_dog_sdk_h.hpp"  // 修改为新的 SDK 头文件
 
 #include <sensor_msgs/Joy.h>
 #include <std_msgs/Int16MultiArray.h>
@@ -26,28 +24,19 @@ bool UnitreeHW::init(ros::NodeHandle& root_nh, ros::NodeHandle& robot_hw_nh) {
   setupImu();
   setupContactSensor(robot_hw_nh);
 
-#ifdef UNITREE_SDK_3_3_1
-  udp_ = std::make_shared<UNITREE_LEGGED_SDK::UDP>(UNITREE_LEGGED_SDK::LOWLEVEL);
-#elif UNITREE_SDK_3_8_0
-  udp_ = std::make_shared<UNITREE_LEGGED_SDK::UDP>(UNITREE_LEGGED_SDK::LOWLEVEL, 8090, "192.168.123.10", 8007);
-#endif
+  // 初始化新的 UDP 通信
+  udp_ = std::make_shared<FREE_DOG_SDK::UDP>();  // 新的 SDK UDP 初始化方法
 
+  // 使用新的命令结构
   udp_->InitCmdData(lowCmd_);
 
   std::string robot_type;
   root_nh.getParam("robot_type", robot_type);
-#ifdef UNITREE_SDK_3_3_1
-  if (robot_type == "a1") {
-    safety_ = std::make_shared<UNITREE_LEGGED_SDK::Safety>(UNITREE_LEGGED_SDK::LeggedType::A1);
-  } else if (robot_type == "aliengo") {
-    safety_ = std::make_shared<UNITREE_LEGGED_SDK::Safety>(UNITREE_LEGGED_SDK::LeggedType::Aliengo);
-  }
-#elif UNITREE_SDK_3_8_0
+
+  // 根据 robot_type 初始化不同的安全控制
   if (robot_type == "go1") {
-    safety_ = std::make_shared<UNITREE_LEGGED_SDK::Safety>(UNITREE_LEGGED_SDK::LeggedType::Go1);
-  }
-#endif
-  else {
+    safety_ = std::make_shared<FREE_DOG_SDK::Safety>(FREE_DOG_SDK::LeggedType::Go1);  // 修改为新的 SDK 接口
+  } else {
     ROS_FATAL("Unknown robot type: %s", robot_type.c_str());
     return false;
   }
@@ -58,15 +47,17 @@ bool UnitreeHW::init(ros::NodeHandle& root_nh, ros::NodeHandle& robot_hw_nh) {
 }
 
 void UnitreeHW::read(const ros::Time& time, const ros::Duration& /*period*/) {
-  udp_->Recv();
-  udp_->GetRecv(lowState_);
+  udp_->Recv();  // 接收数据
+  udp_->GetRecv(lowState_);  // 获取接收到的状态信息
 
+  // 更新关节信息
   for (int i = 0; i < 12; ++i) {
     jointData_[i].pos_ = lowState_.motorState[i].q;
     jointData_[i].vel_ = lowState_.motorState[i].dq;
     jointData_[i].tau_ = lowState_.motorState[i].tauEst;
   }
 
+  // 更新 IMU 数据
   imuData_.ori_[0] = lowState_.imu.quaternion[1];
   imuData_.ori_[1] = lowState_.imu.quaternion[2];
   imuData_.ori_[2] = lowState_.imu.quaternion[3];
@@ -78,11 +69,12 @@ void UnitreeHW::read(const ros::Time& time, const ros::Duration& /*period*/) {
   imuData_.linearAcc_[1] = lowState_.imu.accelerometer[1];
   imuData_.linearAcc_[2] = lowState_.imu.accelerometer[2];
 
+  // 更新接触传感器状态
   for (size_t i = 0; i < CONTACT_SENSOR_NAMES.size(); ++i) {
     contactState_[i] = lowState_.footForce[i] > contactThreshold_;
   }
 
-  // Set feedforward and velocity cmd to zero to avoid for safety when not controller setCommand
+  // 清零控制命令以避免不安全的操作
   std::vector<std::string> names = hybridJointInterface_.getNames();
   for (const auto& name : names) {
     HybridJointHandle handle = hybridJointInterface_.getHandle(name);
@@ -96,6 +88,7 @@ void UnitreeHW::read(const ros::Time& time, const ros::Duration& /*period*/) {
 }
 
 void UnitreeHW::write(const ros::Time& /*time*/, const ros::Duration& /*period*/) {
+  // 更新关节命令
   for (int i = 0; i < 12; ++i) {
     lowCmd_.motorCmd[i].q = static_cast<float>(jointData_[i].posDes_);
     lowCmd_.motorCmd[i].dq = static_cast<float>(jointData_[i].velDes_);
@@ -104,12 +97,12 @@ void UnitreeHW::write(const ros::Time& /*time*/, const ros::Duration& /*period*/
     lowCmd_.motorCmd[i].tau = static_cast<float>(jointData_[i].ff_);
   }
 
-
+  // 安全保护 (注释掉原来的安全控制部分)
   // safety_->PositionLimit(lowCmd_);
   // safety_->PowerProtect(lowCmd_, lowState_, powerLimit_);
 
-  udp_->SetSend(lowCmd_);
-  udp_->Send();
+  udp_->SetSend(lowCmd_);  // 发送控制命令
+  udp_->Send();  // 发送数据包
 }
 
 bool UnitreeHW::setupJoints() {
@@ -117,13 +110,13 @@ bool UnitreeHW::setupJoints() {
     int leg_index = 0;
     int joint_index = 0;
     if (joint.first.find("RF") != std::string::npos) {
-      leg_index = UNITREE_LEGGED_SDK::FR_;
+      leg_index = FREE_DOG_SDK::FR_;  // 修改为新的 SDK 接口
     } else if (joint.first.find("LF") != std::string::npos) {
-      leg_index = UNITREE_LEGGED_SDK::FL_;
+      leg_index = FREE_DOG_SDK::FL_;  // 修改为新的 SDK 接口
     } else if (joint.first.find("RH") != std::string::npos) {
-      leg_index = UNITREE_LEGGED_SDK::RR_;
+      leg_index = FREE_DOG_SDK::RR_;  // 修改为新的 SDK 接口
     } else if (joint.first.find("LH") != std::string::npos) {
-      leg_index = UNITREE_LEGGED_SDK::RL_;
+      leg_index = FREE_DOG_SDK::RL_;  // 修改为新的 SDK 接口
     } else {
       continue;
     }
@@ -176,6 +169,7 @@ void UnitreeHW::updateJoystick(const ros::Time& time) {
     return;
   }
   lastJoyPub_ = time;
+
   xRockerBtnDataStruct keyData;
   memcpy(&keyData, &lowState_.wirelessRemote[0], 40);
   sensor_msgs::Joy joyMsg;  // Pack as same as Logitech F710
@@ -210,4 +204,3 @@ void UnitreeHW::updateContact(const ros::Time& time) {
 }
 
 }  // namespace legged
-
