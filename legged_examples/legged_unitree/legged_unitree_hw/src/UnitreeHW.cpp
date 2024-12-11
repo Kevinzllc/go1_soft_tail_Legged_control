@@ -121,21 +121,20 @@ void UnitreeHW::updateJoystick(const ros::Time& time) {
     xRockerBtnDataStruct keyData;
     memcpy(&keyData, &lowState_.wirelessRemote[0], 40);
     sensor_msgs::Joy joyMsg;  
-    joyMsg.axes.push_back(-keyData.lx);
-    joyMsg.axes.push_back(keyData.ly);
-    joyMsg.axes.push_back(-keyData.rx);
-    joyMsg.axes.push_back keyData.ry);
-    joyMsg.buttons.push_back keyData.btn.components.X);
-    joyMsg.buttons.push_back keyData.btn.components.A);
-    joyMsg.buttons.push_back keyData.btn.components.B);
-    joyMsg.buttons.push_back keyData.btn.components.Y);
-    joyMsg.buttons.push_back keyData.btn.components.L1);
-    joyMsg.buttons.push_back keyData.btn.components.R1);
-    joyMsg.buttons.push_back keyData.btn.components.L2);
-    joyMsg.buttons.push_back keyData.btn.components.R2;
-    joyMsg.buttons.push_back keyData.btn.components.select;
-    joyMsg.buttons.push_back keyData.btn.components.start;
-    joyPublisher_.publish(joyMsg);
+    joyMsg.axes.push_back (-keyData.lx);
+    joyMsg.axes.push_back (keyData.ly);
+    joyMsg.axes.push_back (-keyData.rx);
+    joyMsg.axes.push_back (keyData.ry);
+    joyMsg.buttons.push_back (keyData.btn.components.X);
+    joyMsg.buttons.push_back (keyData.btn.components.A);
+    joyMsg.buttons.push_back (keyData.btn.components.B);
+    joyMsg.buttons.push_back (keyData.btn.components.Y);
+    joyMsg.buttons.push_back (keyData.btn.components.L1);
+    joyMsg.buttons.push_back (keyData.btn.components.R1);
+    joyMsg.buttons.push_back (keyData.btn.components.L2);
+    joyMsg.buttons.push_back (keyData.btn.components.R2);
+    joyMsg.buttons.push_back (keyData.btn.components.select);
+    joyMsg.buttons.push_back (keyData.btn.components.start);
 }
 
 void UnitreeHW::updateContact(const ros::Time& time) {
@@ -146,7 +145,7 @@ void UnitreeHW::updateContact(const ros::Time& time) {
 
     std_msgs::Int16MultiArray contactMsg;
     for (size_t i = 0; i < CONTACT_SENSOR_NAMES.size(); ++i) {
-        contactMsg.data.push_back lowState_.footForce[i];
+        contactMsg.data.push_back (lowState_.footForce[i]);
     }
     contactPublisher_.publish(contactMsg);
 }
