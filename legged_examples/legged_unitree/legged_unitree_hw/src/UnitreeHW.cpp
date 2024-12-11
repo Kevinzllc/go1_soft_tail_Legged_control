@@ -32,7 +32,7 @@ bool UnitreeHW::init(ros::NodeHandle& root_nh, ros::NodeHandle& robot_hw_nh) {
     root_nh.getParam("robot_type", robot_type);
 
     if (robot_type == "go1") {  
-        safety_ = std::make_shared<FDSC::Safety>(FDSC::DogType::YourType);
+        safety_ = std::make_shared<FDSC::Safety>(FDSC::DogType::Go1);
     } else {
         ROS_FATAL("Unknown robot type: %s", robot_type.c_str());
         return false;
@@ -124,17 +124,17 @@ void UnitreeHW::updateJoystick(const ros::Time& time) {
     joyMsg.axes.push_back(-keyData.lx);
     joyMsg.axes.push_back(keyData.ly);
     joyMsg.axes.push_back(-keyData.rx);
-    joyMsg.axes.push_back(keyData.ry);
-    joyMsg.buttons.push_back(keyData.btn.components.X);
-    joyMsg.buttons.push_back(keyData.btn.components.A);
-    joyMsg.buttons.push_back (keyData.btn.components.B);
-    joyMsg.buttons.push_back (keyData.btn.components.Y);
-    joyMsg.buttons.push_back (keyData.btn.components.L1);
-    joyMsg.buttons.push_back (keyData.btn.components.R1);
-    joyMsg.buttons.push_back (keyData.btn.components.L2);
-    joyMsg.buttons.push_back (keyData.btn.components.R2);
-    joyMsg.buttons.push_back (keyData.btn.components.select);
-    joyMsg.buttons.push_back (keyData.btn.components.start);
+    joyMsg.axes.push_back keyData.ry);
+    joyMsg.buttons.push_back keyData.btn.components.X);
+    joyMsg.buttons.push_back keyData.btn.components.A);
+    joyMsg.buttons.push_back keyData.btn.components.B);
+    joyMsg.buttons.push_back keyData.btn.components.Y);
+    joyMsg.buttons.push_back keyData.btn.components.L1);
+    joyMsg.buttons.push_back keyData.btn.components.R1);
+    joyMsg.buttons.push_back keyData.btn.components.L2);
+    joyMsg.buttons.push_back keyData.btn.components.R2;
+    joyMsg.buttons.push_back keyData.btn.components.select;
+    joyMsg.buttons.push_back keyData.btn.components.start;
     joyPublisher_.publish(joyMsg);
 }
 
@@ -146,11 +146,12 @@ void UnitreeHW::updateContact(const ros::Time& time) {
 
     std_msgs::Int16MultiArray contactMsg;
     for (size_t i = 0; i < CONTACT_SENSOR_NAMES.size(); ++i) {
-        contactMsg.data.push_back(lowState_.footForce[i]);
+        contactMsg.data.push_back lowState_.footForce[i];
     }
     contactPublisher_.publish(contactMsg);
 }
 
 }  // namespace legged
+
 
 
