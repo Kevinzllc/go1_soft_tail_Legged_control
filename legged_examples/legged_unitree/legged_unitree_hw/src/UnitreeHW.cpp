@@ -92,13 +92,14 @@ bool UnitreeHW::init(ros::NodeHandle& root_nh, ros::NodeHandle& robot_hw_nh) {
 //   }
 
 void UnitreeHW::read(const ros::Time& time, const ros::Duration& /*period*/) {
-    auto data = connection_->getData();
+    auto data = connection_->getData(); 
 
-    for (int i = 0; i < 12; ++i) {
-        jointData_[i].pos_ = data[i].position;
-        jointData_[i].vel_ = data[i].velocity;
-        jointData_[i].tau_ = data[i].torque;
+    for (int i = 0; i < data.size(); ++i) {
+        jointData_[i].pos_ = data[i].motorState[i].q;      
+        jointData_[i].vel_ = data[i].motorState[i].dq;     
+        jointData_[i].tau_ = data[i].motorState[i].tauEst; 
     }
+}
 
 //   imuData_.ori_[0] = lowState_.imu.quaternion[1];
 //   imuData_.ori_[1] = lowState_.imu.quaternion[2];
@@ -110,10 +111,12 @@ void UnitreeHW::read(const ros::Time& time, const ros::Duration& /*period*/) {
 //   imuData_.linearAcc_[0] = lowState_.imu.accelerometer[0];
 //   imuData_.linearAcc_[1] = lowState_.imu.accelerometer[1];
 //   imuData_.linearAcc_[2] = lowState_.imu.accelerometer[2];
-    
-    imuData_.ori_ = { data.imu.orientation[0], data.imu.orientation[1], data.imu.orientation[2], data.imu.orientation[3] };
-    imuData_.angularVel_ = { data.imu.angularVelocity[0], data.imu.angularVelocity[1], data.imu.angularVelocity[2] };
-    imuData_.linearAcc_ = { data.imu.linearAcceleration[0], data.imu.linearAcceleration[1], data.imu.linearAcceleration[2] };
+
+    imuData_.ori_ = {data.imu_quaternion[0], data.imu_quaternion[1], data.imu_quaternion[2], data.imu_quaternion[3]};
+    imuData_.angularVel_ = {data.imu_gyroscope[0], data.imu_gyroscope[1], data.imu_gyroscope[2]};
+    imuData_.linearAcc_ = {data.imu_accelerometer[0], data.imu_accelerometer[1], data.imu_accelerometer[2]};
+}
+
 
 //   for (size_t i = 0; i < CONTACT_SENSOR_NAMES.size(); ++i) {
 //     contactState_[i] = lowState_.footForce[i] > contactThreshold_;
@@ -134,8 +137,9 @@ void UnitreeHW::read(const ros::Time& time, const ros::Duration& /*period*/) {
 
     
     for (size_t i = 0; i < CONTACT_SENSOR_NAMES.size(); ++i) {
-        contactState_[i] = data.contactStates[i] > contactThreshold_;
-    }
+    contactState_[i] = data.footForce[i] > contactThreshold_;
+   }
+
 
     updateJoystick(time);
     updateContact(time);
@@ -166,23 +170,40 @@ void UnitreeHW::write(const ros::Time& /*time*/, const ros::Duration& /*period*/
         lowCmd_.motorCmd[i].tau = static_cast<float>(jointData_[i].ff_);
     }
 
-    safety_->PositionLimit(lowCmd_);
-    safety_->PowerProtect(lowCmd_, lowState_, powerLimit_);
+    // safety_->PositionLimit(lowCmd_);
+    // safety_->PowerProtect(lowCmd_, lowState_, powerLimit_);
     connection_->send(lowCmd_.buildCmd());
 }
 
+// bool UnitreeHW::setupJoints() {
+//   for (const auto& joint : urdfModel_->joints_) {
+//     int leg_index = 0;
+//     int joint_index = 0;
+//     if (joint.first.find("RF") != std::string::npos) {
+//       leg_index = UNITREE_LEGGED_SDK::FR_;
+//     } else if (joint.first.find("LF") != std::string::npos) {
+//       leg_index = UNITREE_LEGGED_SDK::FL_;
+//     } else if (joint.first.find("RH") != std::string::npos) {
+//       leg_index = UNITREE_LEGGED_SDK::RR_;
+//     } else if (joint.first.find("LH") != std::string::npos) {
+//       leg_index = UNITREE_LEGGED_SDK::RL_;
+//     } else {
+//       continue;
+//     }
+
 bool UnitreeHW::setupJoints() {
   for (const auto& joint : urdfModel_->joints_) {
-    int leg_index = 0;
+    FDSC::Leg leg_index;
     int joint_index = 0;
+
     if (joint.first.find("RF") != std::string::npos) {
-      leg_index = UNITREE_LEGGED_SDK::FR_;
+      leg_index = FDSC::Leg::FR_;
     } else if (joint.first.find("LF") != std::string::npos) {
-      leg_index = UNITREE_LEGGED_SDK::FL_;
+      leg_index = FDSC::Leg::FL_;
     } else if (joint.first.find("RH") != std::string::npos) {
-      leg_index = UNITREE_LEGGED_SDK::RR_;
+      leg_index = FDSC::Leg::RR_;
     } else if (joint.first.find("LH") != std::string::npos) {
-      leg_index = UNITREE_LEGGED_SDK::RL_;
+      leg_index = FDSC::Leg::RL_;
     } else {
       continue;
     }
@@ -198,8 +219,7 @@ bool UnitreeHW::setupJoints() {
     }
 
     int index = leg_index * 3 + joint_index;
-    hardware_interface::JointStateHandle state_handle(joint.first, &jointData_[index].pos_, &jointData_[index].vel_,
-                                                      &jointData_[index].tau_);
+    hardware_interface::JointStateHandle state_handle(joint.first, &jointData_[index].pos_, &jointData_[index].vel_,&jointData_[index].tau_);
     jointStateInterface_.registerHandle(state_handle);
     hybridJointInterface_.registerHandle(HybridJointHandle(state_handle, &jointData_[index].posDes_, &jointData_[index].velDes_,
                                                            &jointData_[index].kp_, &jointData_[index].kd_, &jointData_[index].ff_));
